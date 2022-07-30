@@ -9,6 +9,9 @@ class PostType(models.TextChoices):
     DAY_SUMMARY = "day"
     DAY_CARDS = "day_cards"
     DAX_DURATION = "day_duration"
+    NEW_DECK = "new_deck"
+    NEW_CARDS = "new_cards"
+    UNSUSPEND = "unsuspend"
 
 
 class Post(models.Model):
@@ -35,6 +38,9 @@ class Post(models.Model):
     # - day_summary: "cards", "cards_unique" (optional), "duration" (minutes, float)
     # - day_cards: "cards", "cards_unique" (or just either of them)
     # - day_duration: "duration" (minutes, float)
+    # - new_deck: "name"
+    # - new_cards: "count"
+    # - unsuspend: "count"
     data = models.JSONField()
 
     comment = models.TextField(
