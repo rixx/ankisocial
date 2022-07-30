@@ -19,7 +19,7 @@ class Post(models.Model):
     )
     timestamp = models.DateTimeField(auto_now_add=True)
 
-    post_type = models.CharField(max_length=10, choices=PostType.choices)
+    post_type = models.CharField(max_length=15, choices=PostType.choices)
     achievement = models.BooleanField(
         default=False
     )  # basically a "the most I ever got", but difficult as a single flag with composite data (is the card count or the duration the achievement?)
@@ -47,7 +47,7 @@ class Post(models.Model):
     )
 
     class Meta:
-        ordering = ("-post_date",)
+        ordering = ("-timestamp",)
 
     @cached_property
     def post_main_text(self):
