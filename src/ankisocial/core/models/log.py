@@ -6,7 +6,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.functional import cached_property
 
-
 ACTIONS = {
     "user.password.reset": "Password reset email was sent.",
     "user.token.reset": "API token was reset",

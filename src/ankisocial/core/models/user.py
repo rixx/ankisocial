@@ -1,14 +1,7 @@
-from django.db import models
-import os
-
 import json
-import random
+import os
 from contextlib import suppress
-from hashlib import md5
-from urllib.parse import urljoin
 
-import pytz
-from django.conf import settings
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
@@ -16,14 +9,9 @@ from django.contrib.auth.models import (
 )
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
-from django.db.models import Q
 from django.utils.crypto import get_random_string
-from django.utils.functional import cached_property
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
-from django.utils.translation import override
-from django_scopes import scopes_disabled
-from rest_framework.authtoken.models import Token
 
 
 def path_with_hash(name):
@@ -74,7 +62,7 @@ class UserManager(BaseUserManager):
         return user
 
 
-class User(FileCleanupMixin, AbstractBaseUser):
+class User(PermissionsMixin, FileCleanupMixin, AbstractBaseUser):
 
     EMAIL_FIELD = "email"
     USERNAME_FIELD = "email"
@@ -101,17 +89,6 @@ class User(FileCleanupMixin, AbstractBaseUser):
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
 
-    # not in use atm
-    locale = models.CharField(
-        max_length=32,
-        default=settings.LANGUAGE_CODE,
-        choices=settings.LANGUAGES,
-        verbose_name=_("Preferred language"),
-    )
-    # not in use atm
-    timezone = models.CharField(
-        choices=[(tz, tz) for tz in pytz.common_timezones], max_length=30, default="UTC"
-    )
     avatar = models.ImageField(
         null=True,
         blank=True,
@@ -126,12 +103,18 @@ class User(FileCleanupMixin, AbstractBaseUser):
 
     locked = models.BooleanField(
         verbose_name=_("Lock account"),
-        help_text=_("Posts by locked accounts will only be visible to their followers, and you can approve follow requests first."),
+        help_text=_(
+            "Posts by locked accounts will only be visible to their followers, and you can approve follow requests first."
+        ),
         default=False,
     )
     app_token = models.CharField(
-        null=True, max_length=160, verbose_name="App token",
-        help_text=_("The secret token used by scripts and apps to post. Resetting it generates a new token, and the old token won't work anymore."),
+        null=True,
+        max_length=160,
+        verbose_name="App token",
+        help_text=_(
+            "The secret token used by scripts and apps to post. Resetting it generates a new token, and the old token won't work anymore."
+        ),
     )
 
     def __str__(self) -> str:
@@ -147,8 +130,7 @@ class User(FileCleanupMixin, AbstractBaseUser):
         return super().save(*args, **kwargs)
 
     def log_action(self, action: str, data: dict = None, user=None):
-        """Create a log entry for this user.
-        """
+        """Create a log entry for this user."""
         from .log import ActivityLog
 
         if data:
@@ -176,7 +158,7 @@ class User(FileCleanupMixin, AbstractBaseUser):
 
         return ActivityLog.objects.filter(user=self)
 
-    def regenerate_token(self) -> Token:
+    def regenerate_token(self):
         """Generates a new API access token, deleting the old one."""
         self.log_action(action="user.token.reset")
         self.app_token = get_random_string(32)
@@ -186,13 +168,13 @@ class User(FileCleanupMixin, AbstractBaseUser):
     regenerate_token.alters_data = True
 
     @transaction.atomic
-    def reset_password(self, event, user=None, mail_text=None, orga=False):
+    def reset_password(self, request, user=None, mail_text=None, orga=False):
         self.pw_reset_token = get_random_string(32)
         self.pw_reset_time = now()
         self.save()
 
-        url = build_absolute_uri(
-            "auth.recover", kwargs={"token": self.pw_reset_token}
+        url = request.build_absolute_uri(
+            reverse("auth.recover", kwargs={"token": self.pw_reset_token})
         )
         context = {
             "name": self.name or "",
@@ -214,6 +196,7 @@ the Ankisocial robot"""
             )
 
         # TODO actually send email
-        subject=_("Password recovery")
+        subject = _("Password recovery")
         self.log_action(action="user.password.reset", person=user)
+
     reset_password.alters_data = True
