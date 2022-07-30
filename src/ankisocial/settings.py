@@ -11,6 +11,9 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 from pathlib import Path
+from contextlib import suppress
+import os
+from django.utils.crypto import get_random_string
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,7 +23,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-$mi=kh==mrry+f#mo)&2)a#+h-uvbl3-el8777$h02w!yp(*&z"
+BASE_DIR = Path(__file__).parent.parent
+DATA_DIR = BASE_DIR / "data"
+SECRET_FILE = DATA_DIR / ".secret"
+if SECRET_FILE.exists():
+    with SECRET_FILE.open() as f:
+        SECRET_KEY = f.read().strip()
+else:
+    chars = "abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)"
+    SECRET_KEY = get_random_string(50, chars)
+    with SECRET_FILE.open(mode="w") as f:
+        SECRET_FILE.chmod(0o600)
+        with suppress(Exception):  # chown is not available on all platforms
+            os.chown(SECRET_FILE, os.getuid(), os.getgid())
+        f.write(SECRET_KEY)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -121,3 +137,5 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+AUTH_USER_MODEL = "core.User"
